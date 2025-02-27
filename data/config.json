@@ -1,0 +1,214 @@
+{
+  "cities": [
+    {
+      "name": "Москва",
+      "latitude": 55.75,
+      "longitude": 37.62
+    },
+    {
+      "name": "Астрахань",
+      "latitude": 46.35,
+      "longitude": 48.04
+    },
+    {
+      "name": "Барнаул",
+      "latitude": 53.36,
+      "longitude": 83.76
+    },
+    {
+      "name": "Брянск",
+      "latitude": 53.25,
+      "longitude": 34.37
+    },
+    {
+      "name": "Владивосток",
+      "latitude": 43.11,
+      "longitude": 131.87
+    },
+    {
+      "name": "Волгоград",
+      "latitude": 48.72,
+      "longitude": 44.5
+    },
+    {
+      "name": "Воронеж",
+      "latitude": 51.67,
+      "longitude": 39.18
+    },
+    {
+      "name": "Екатеринбург",
+      "latitude": 56.85,
+      "longitude": 60.61
+    },
+    {
+      "name": "Иваново",
+      "latitude": 57,
+      "longitude": 40.97
+    },
+    {
+      "name": "Ижевск",
+      "latitude": 56.85,
+      "longitude": 53.2
+    },
+    {
+      "name": "Иркутск",
+      "latitude": 52.3,
+      "longitude": 104.3
+    },
+    {
+      "name": "Казань",
+      "latitude": 55.79,
+      "longitude": 49.12
+    },
+    {
+      "name": "Калининград",
+      "latitude": 54.71,
+      "longitude": 20.51
+    },
+    {
+      "name": "Кемерово",
+      "latitude": 55.33,
+      "longitude": 86.08
+    },
+    {
+      "name": "Киров",
+      "latitude": 58.6,
+      "longitude": 49.66
+    },
+    {
+      "name": "Краснодар",
+      "latitude": 45.04,
+      "longitude": 38.98
+    },
+    {
+      "name": "Красноярск",
+      "latitude": 56.02,
+      "longitude": 92.87
+    },
+    {
+      "name": "Липецк",
+      "latitude": 52.6,
+      "longitude": 39.57
+    },
+    {
+      "name": "Махачкала",
+      "latitude": 42.98,
+      "longitude": 47.5
+    },
+    {
+      "name": "Набережные Челны",
+      "latitude": 55.73,
+      "longitude": 52.41
+    },
+    {
+      "name": "Нижний Новгород",
+      "latitude": 56.33,
+      "longitude": 44
+    },
+    {
+      "name": "Новокузнецк",
+      "latitude": 53.76,
+      "longitude": 87.11
+    },
+    {
+      "name": "Новосибирск",
+      "latitude": 55.04,
+      "longitude": 82.93
+    },
+    {
+      "name": "Омск",
+      "latitude": 54.99,
+      "longitude": 73.37
+    },
+    {
+      "name": "Оренбург",
+      "latitude": 51.77,
+      "longitude": 55.1
+    },
+    {
+      "name": "Пенза",
+      "latitude": 53.2,
+      "longitude": 45
+    },
+    {
+      "name": "Пермь",
+      "latitude": 58.01,
+      "longitude": 56.25
+    },
+    {
+      "name": "Ростов-на-Дону",
+      "latitude": 47.23,
+      "longitude": 39.72
+    },
+    {
+      "name": "Рязань",
+      "latitude": 54.63,
+      "longitude": 39.69
+    },
+    {
+      "name": "Самара",
+      "latitude": 53.2,
+      "longitude": 50.15
+    },
+    {
+      "name": "Санкт-Петербург",
+      "latitude": 59.94,
+      "longitude": 30.31
+    },
+    {
+      "name": "Саратов",
+      "latitude": 51.54,
+      "longitude": 46.01
+    },
+    {
+      "name": "Тольятти",
+      "latitude": 53.53,
+      "longitude": 49.35
+    },
+    {
+      "name": "Томск",
+      "latitude": 56.5,
+      "longitude": 84.97
+    },
+    {
+      "name": "Тула",
+      "latitude": 54.2,
+      "longitude": 37.62
+    },
+    {
+      "name": "Тюмень",
+      "latitude": 57.15,
+      "longitude": 65.53
+    },
+    {
+      "name": "Ульяновск",
+      "latitude": 54.33,
+      "longitude": 48.39
+    },
+    {
+      "name": "Уфа",
+      "latitude": 54.74,
+      "longitude": 55.97
+    },
+    {
+      "name": "Хабаровск",
+      "latitude": 48.48,
+      "longitude": 135.08
+    },
+    {
+      "name": "Чебоксары",
+      "latitude": 56.13,
+      "longitude": 47.25
+    },
+    {
+      "name": "Челябинск",
+      "latitude": 55.15,
+      "longitude": 61.43
+    },
+    {
+      "name": "Ярославль",
+      "latitude": 57.63,
+      "longitude": 39.87
+    }
+  ]
+}
