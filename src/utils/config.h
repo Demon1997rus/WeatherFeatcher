@@ -14,6 +14,10 @@ public:
     static Config &instance();
     bool loadConfig(const QString &configPath);
 
+public:
+    std::string &apiKey();
+    const std::string &apiKey() const;
+
 private:
     Q_DISABLE_COPY(Config);
     explicit Config(QObject *parent = nullptr);

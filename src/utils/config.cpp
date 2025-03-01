@@ -54,4 +54,14 @@ bool Config::loadConfig(const QString &configPath)
     return true;
 }
 
+std::string &Config::apiKey()
+{
+    return this->api_key;
+}
+
+const std::string &Config::apiKey() const
+{
+    return this->api_key;
+}
+
 Config::Config(QObject *parent) : QObject{parent} {}
