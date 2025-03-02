@@ -9,12 +9,11 @@
 
 HttpService::HttpService(QObject *parent) : QObject(parent) {}
 
-size_t writeCallback(void *contents, size_t size, size_t nmemb, QString *userp)
+size_t writeCallback(void *contents, size_t size, size_t nmemb, QByteArray *userp)
 {
     const size_t res = size * nmemb;
     userp->reserve(userp->size() + static_cast<int>(res));
-    userp->append(
-        QString::fromUtf8(static_cast<const char *>(contents), static_cast<int>(res)));
+    userp->append(static_cast<const char *>(contents), static_cast<int>(res));
     return res;
 }
 
@@ -29,7 +28,8 @@ void HttpService::fetchWeatherData(const double latitude, const double longitude
 {
     std::unique_ptr<CURL, decltype(&curlDeleter)> curlHandle(curl_easy_init(), curlDeleter);
     if (!curlHandle) {
-        emit requestError("Failed to create CURL handle");
+        emit requestError(
+            "Не удалось инициализировать соединение. Пожалуйста, попробуйте еще раз или обратитесь в поддержку.");
         return;
     }
 
@@ -39,14 +39,15 @@ void HttpService::fetchWeatherData(const double latitude, const double longitude
 
     const std::string url = urlStream.str();
 
-    QString response;
+    QByteArray response;
     curl_easy_setopt(curlHandle.get(), CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlHandle.get(), CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curlHandle.get(), CURLOPT_WRITEDATA, &response);
 
     CURLcode res = curl_easy_perform(curlHandle.get());
     if (res != CURLE_OK) {
-        const QString errorMessage = QString("Request failed: %1").arg(curl_easy_strerror(res));
+        const QString errorMessage =
+            QString("Запрос не выполнен: %1").arg(curl_easy_strerror(res));
         emit requestError(errorMessage);
         return;
     }
@@ -55,10 +56,9 @@ void HttpService::fetchWeatherData(const double latitude, const double longitude
     curl_easy_getinfo(curlHandle.get(), CURLINFO_RESPONSE_CODE, &responseCode);
 
     if (responseCode != 200) {
-        const QString errorMessage =
-            QString("Request failed with response code: %1\nResponse: %2")
-                .arg(responseCode)
-                .arg(response);
+        const QString errorMessage = QString("Ошибка запроса с кодом ответа: %1\nОтвет: %2")
+                                         .arg(responseCode)
+                                         .arg(QString(response));
         emit requestError(errorMessage);
         return;
     }

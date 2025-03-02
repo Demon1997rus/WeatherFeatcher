@@ -11,6 +11,6 @@ public slots:
     void fetchWeatherData(const double latitude, const double longitude) const;
 
 signals:
-    void weatherDataReceived(const QString &response) const;
+    void weatherDataReceived(const QByteArray &response) const;
     void requestError(const QString &errorMessage) const;
 };

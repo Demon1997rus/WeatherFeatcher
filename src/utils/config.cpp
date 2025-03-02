@@ -41,6 +41,12 @@ bool Config::loadConfig(const QString &configPath)
     // Получение данных для городов
     const QJsonObject configJson = configDoc.object();
     const QJsonArray arrayCity = configJson["cities"].toArray();
+    if (arrayCity.empty()) {
+        qCritical() << Q_FUNC_INFO;
+        qCritical() << "At least one city must be specified in the configuration";
+        return false;
+    }
+
     coordinates_cities.reserve(arrayCity.size());
     for (const auto cityValue : arrayCity) {
         const QJsonObject cityData = cityValue.toObject();
@@ -54,14 +60,12 @@ bool Config::loadConfig(const QString &configPath)
     return true;
 }
 
-std::string &Config::apiKey()
-{
-    return this->api_key;
-}
-
 const std::string &Config::apiKey() const
 {
     return this->api_key;
 }
 
-Config::Config(QObject *parent) : QObject{parent} {}
+const std::vector<CityCoordinate> &Config::coordinatesCities() const
+{
+    return this->coordinates_cities;
+}

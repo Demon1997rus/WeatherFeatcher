@@ -8,19 +8,18 @@
 
 #include "structures/citycoordinate.h"
 
-class Config : public QObject {
-    Q_OBJECT
+class Config {
 public:
     static Config &instance();
     bool loadConfig(const QString &configPath);
 
 public:
-    std::string &apiKey();
     const std::string &apiKey() const;
+    const std::vector<CityCoordinate> &coordinatesCities() const;
 
 private:
     Q_DISABLE_COPY(Config);
-    explicit Config(QObject *parent = nullptr);
+    Config() = default;
 
 private:
     std::string api_key;

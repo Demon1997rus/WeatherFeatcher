@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QDebug>
 
+#include "presenter/weathercontroller.h"
 #include "utils/config.h"
 
 int main(int argc, char *argv[])
@@ -12,6 +13,8 @@ int main(int argc, char *argv[])
     if (!Config::instance().loadConfig(configPath)) {
         qFatal("Couldn't load the config: \"%s\"", configPath.toUtf8().constData());
     }
+
+    WeatherController controller(&app);
 
     return app.exec();
 }
