@@ -1,11 +1,9 @@
 #include "weatherwidget.h"
 
 #include <QApplication>
-#include <QDebug>
 #include <QDesktopWidget>
 #include <QMessageBox>
 #include <QPair>
-#include <QScreen>
 
 #include "utils/config.h"
 
@@ -15,6 +13,7 @@ WeatherWidget::WeatherWidget(QWidget *parent) : QWidget(parent)
     settingsWidgets();
     setupLayout();
     initConnects();
+    applyStyles();
 }
 
 void WeatherWidget::loadCurrentCityWeather()
@@ -108,4 +107,24 @@ void WeatherWidget::setDefaultValues()
     windSpeedLabel->setText("Скорость ветра: -- м/с");
     windDirectionLabel->setText("Направление ветра: --°");
     cloudinessLabel->setText("Облачность: --%");
+}
+
+void WeatherWidget::applyStyles()
+{
+    dynamicBackground();
+}
+
+void WeatherWidget::dynamicBackground()
+{
+    QPixmap background("../data/background.jpg");
+    background = background.scaled(this->size(), Qt::IgnoreAspectRatio);
+    QPalette palette;
+    palette.setBrush(QPalette::Window, background);
+    this->setPalette(palette);
+}
+
+void WeatherWidget::resizeEvent(QResizeEvent *event)
+{
+    dynamicBackground();
+    QWidget::resizeEvent(event);
 }

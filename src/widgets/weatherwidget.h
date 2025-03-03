@@ -31,6 +31,8 @@ private:
     void setupLayout();
     void initConnects();
     void setDefaultValues();
+    void applyStyles();
+    void dynamicBackground();
 
 private:
     QGridLayout *mainLayout = nullptr;
@@ -44,4 +46,7 @@ private:
     QLabel *windSpeedLabel = nullptr;
     QLabel *windDirectionLabel = nullptr;
     QLabel *cloudinessLabel = nullptr;
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 };
