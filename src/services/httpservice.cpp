@@ -7,6 +7,8 @@
 
 #include "utils/config.h"
 
+constexpr static size_t maxUrlSize = 256;
+
 HttpService::HttpService(QObject *parent) : QObject(parent) {}
 
 size_t writeCallback(void *contents, size_t size, size_t nmemb, QByteArray *userp)
@@ -33,14 +35,12 @@ void HttpService::fetchWeatherData(const double latitude, const double longitude
         return;
     }
 
-    std::ostringstream urlStream;
-    urlStream << "https://api.openweathermap.org/data/2.5/weather?lat=" << latitude
-              << "&lon=" << longitude << "&appid=" << Config::instance().apiKey();
-
-    const std::string url = urlStream.str();
-
+    char urlBuffer[maxUrlSize];
+    std::snprintf(urlBuffer, sizeof(urlBuffer),
+                  "https://api.openweathermap.org/data/2.5/weather?lat=%.6f&lon=%.6f&appid=%s",
+                  latitude, longitude, Config::instance().apiKey().c_str());
     QByteArray response;
-    curl_easy_setopt(curlHandle.get(), CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curlHandle.get(), CURLOPT_URL, urlBuffer);
     curl_easy_setopt(curlHandle.get(), CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curlHandle.get(), CURLOPT_WRITEDATA, &response);
 

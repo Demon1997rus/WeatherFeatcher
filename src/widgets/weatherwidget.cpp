@@ -112,6 +112,17 @@ void WeatherWidget::setDefaultValues()
 void WeatherWidget::applyStyles()
 {
     dynamicBackground();
+
+    QString labelStyle = "QLabel { color: white; }";
+
+    temperatureLabel->setStyleSheet(labelStyle);
+    feelsLikeLabel->setStyleSheet(labelStyle);
+    descriptionLabel->setStyleSheet(labelStyle);
+    humidityLabel->setStyleSheet(labelStyle);
+    pressureLabel->setStyleSheet(labelStyle);
+    windSpeedLabel->setStyleSheet(labelStyle);
+    windDirectionLabel->setStyleSheet(labelStyle);
+    cloudinessLabel->setStyleSheet(labelStyle);
 }
 
 void WeatherWidget::dynamicBackground()
