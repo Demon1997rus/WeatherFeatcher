@@ -25,6 +25,7 @@ int runScreenshotMode(QApplication &app, const QString &outputPath, CityDirector
     sample.setWindDirection(231);
     sample.setCloudiness(96);
     sample.setIconCode("04d");
+    sample.setTimezoneOffset(3 * 3600);
 
     widget.resize(1280, 800);
     widget.show();

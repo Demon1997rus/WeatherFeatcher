@@ -29,6 +29,10 @@ public:
     // Best case-insensitive substring match; the most populated city wins
     bool bestMatch(const QString &text, Entry &out) const;
 
+    // Top matches for live search: prefix matches first, then substring
+    // matches; population order is preserved inside each group
+    std::vector<Entry> search(const QString &text, int limit = 10) const;
+
     // Display string for an entry: "Name, CC"
     static QString displayName(const Entry &entry);
 

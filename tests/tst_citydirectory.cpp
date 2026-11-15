@@ -11,6 +11,7 @@ private slots:
     void findsByAsciiAlias();
     void bestMatchPrefersMostPopulated();
     void bestMatchSearchesAliases();
+    void searchRanksPrefixOverSubstring();
     void returnsFalseOnUnknown();
 
 private:
@@ -81,6 +82,17 @@ void TestCityDirectory::returnsFalseOnUnknown()
     CityDirectory::Entry entry;
     QVERIFY(!directory.find("Несуществующий, RU", entry));
     QVERIFY(!directory.bestMatch("qwertyuiop", entry));
+}
+
+void TestCityDirectory::searchRanksPrefixOverSubstring()
+{
+    CityDirectory directory;
+    QVERIFY(directory.load(fixturePath));
+
+    // "сам" is a prefix of both Самара entries; RU (1.1M) must beat US (20k)
+    const auto results = directory.search("сам", 10);
+    QCOMPARE(results.size(), size_t(2));
+    QCOMPARE(results.front().country, QString("RU"));
 }
 
 QTEST_GUILESS_MAIN(TestCityDirectory)

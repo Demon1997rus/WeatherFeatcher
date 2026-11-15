@@ -76,6 +76,39 @@ bool CityDirectory::bestMatch(const QString &text, Entry &out) const
     return false;
 }
 
+std::vector<CityDirectory::Entry> CityDirectory::search(const QString &text, int limit) const
+{
+    std::vector<Entry> prefixMatches;
+    std::vector<Entry> substringMatches;
+    prefixMatches.reserve(limit);
+    substringMatches.reserve(limit);
+
+    for (const Entry &entry : entries_) {
+        const bool namePrefix = entry.name.startsWith(text, Qt::CaseInsensitive);
+        const bool aliasPrefix = entry.alias.startsWith(text, Qt::CaseInsensitive);
+        if (namePrefix || aliasPrefix) {
+            if (static_cast<int>(prefixMatches.size()) < limit) {
+                prefixMatches.push_back(entry);
+            }
+        } else if (static_cast<int>(substringMatches.size()) < limit &&
+                   (entry.name.contains(text, Qt::CaseInsensitive) ||
+                    entry.alias.contains(text, Qt::CaseInsensitive))) {
+            substringMatches.push_back(entry);
+        }
+
+        if (static_cast<int>(prefixMatches.size()) >= limit &&
+            static_cast<int>(substringMatches.size()) >= limit) {
+            break;
+        }
+    }
+
+    prefixMatches.insert(prefixMatches.end(), substringMatches.begin(), substringMatches.end());
+    if (static_cast<int>(prefixMatches.size()) > limit) {
+        prefixMatches.resize(limit);
+    }
+    return prefixMatches;
+}
+
 QString CityDirectory::displayName(const Entry &entry)
 {
     return entry.name + ", " + entry.country;

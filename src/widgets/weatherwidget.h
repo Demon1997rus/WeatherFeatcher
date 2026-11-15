@@ -1,18 +1,15 @@
 #pragma once
 
-#include <QHash>
 #include <QLabel>
 #include <QLineEdit>
-#include <QPixmap>
 #include <QPointF>
 #include <QWidget>
 
 #include "structures/weatherinfo.h"
 #include "utils/citydirectory.h"
 
-class QCompleter;
 class QNetworkAccessManager;
-class QStringListModel;
+class QListWidget;
 class QTimer;
 
 class WeatherWidget : public QWidget {
@@ -32,6 +29,10 @@ signals:
 private slots:
     void onCityActivated(const QString &displayName);
     void onSearchAccepted();
+    void performSearch();
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     QLabel *createValueLabel();
@@ -41,8 +42,9 @@ private:
     void setDefaultValues();
     void applyStyles();
     void selectCity(const CityDirectory::Entry &entry);
-    void updateWeatherIcon(const QString &iconCode);
+    void hideSearchPopup();
 
+    static QString iconEmoji(const QString &iconCode);
     static QString formatTemperature(double temperature);
     static QString windDirectionText(int degrees);
 
@@ -50,11 +52,13 @@ private:
     const CityDirectory &cities;
 
     QLineEdit *searchField = nullptr;
-    QStringListModel *cityModel = nullptr;
-    QCompleter *cityCompleter = nullptr;
+    QListWidget *searchPopup = nullptr;
+    QTimer *searchDebounce = nullptr;
+    bool suppressSearch = false;
 
     QLabel *iconLabel = nullptr;
     QLabel *cityLabel = nullptr;
+    QLabel *timeLabel = nullptr;
     QLabel *temperatureLabel = nullptr;
     QLabel *feelsLikeLabel = nullptr;
     QLabel *descriptionLabel = nullptr;
@@ -69,6 +73,4 @@ private:
     bool hasSelection = false;
 
     QTimer *refreshTimer = nullptr;
-    QNetworkAccessManager *iconDownloader = nullptr;
-    QHash<QString, QPixmap> iconCache;
 };

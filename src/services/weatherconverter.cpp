@@ -20,6 +20,7 @@ void WeatherConverter::convertToWeatherInfo(const QByteArray &data) const
 
     WeatherInfo weatherInfo;
     weatherInfo.setCityName(weatherObject["name"].toString());
+    weatherInfo.setTimezoneOffset(weatherObject["timezone"].toInt());
 
     // Извлечение данных из ключа "main"
     if (weatherObject.contains("main") && weatherObject["main"].isObject()) {

@@ -1,14 +1,11 @@
 #include "weatherwidget.h"
 
-#include <QCompleter>
-#include <QCoreApplication>
+#include <QDateTime>
 #include <QGridLayout>
+#include <QHash>
 #include <QHBoxLayout>
-#include <QImage>
-#include <QListView>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QStringListModel>
+#include <QKeyEvent>
+#include <QListWidget>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -16,6 +13,8 @@
 
 namespace {
 constexpr int refreshIntervalMs = 10 * 60 * 1000; // Refresh weather every 10 minutes
+constexpr int searchDebounceMs = 200;             // Search after typing pauses
+constexpr int maxSearchResults = 10;
 }
 
 WeatherWidget::WeatherWidget(const CityDirectory &cities, QWidget *parent) :
@@ -46,14 +45,20 @@ void WeatherWidget::loadCurrentCityWeather()
 void WeatherWidget::displayWeatherData(const WeatherInfo &info)
 {
     statusLabel->clear();
-    updateWeatherIcon(info.getIconCode());
+    iconLabel->setText(iconEmoji(info.getIconCode()));
+
+    // Local time of the city from its UTC offset
+    timeLabel->setText(QString("Местное время: %1")
+                           .arg(QDateTime::currentDateTimeUtc()
+                                    .addSecs(info.getTimezoneOffset())
+                                    .toString("HH:mm")));
 
     temperatureLabel->setText(formatTemperature(info.getTemperature()));
     feelsLikeLabel->setText(QString("Ощущается как %1").arg(formatTemperature(info.getFeelsLike())));
     descriptionLabel->setText(info.getWeatherDescription());
     humidityValue->setText(QString("%1%").arg(info.getHumidity()));
     pressureValue->setText(QString("%1 hPa").arg(info.getPressure()));
-    windSpeedValue->setText(QString("%1 м/с").arg(info.getWindSpeed()));
+    windSpeedValue->setText(QString("%1 м/с").arg(info.getWindSpeed(), 0, 'f', 1));
     windDirectionValue->setText(windDirectionText(info.getWindDirection()));
     cloudinessValue->setText(QString("%1%").arg(info.getCloudiness()));
 }
@@ -75,6 +80,12 @@ void WeatherWidget::onCityActivated(const QString &displayName)
 
 void WeatherWidget::onSearchAccepted()
 {
+    // Enter with an open popup activates the highlighted row
+    if (searchPopup->isVisible() && searchPopup->currentRow() >= 0) {
+        onCityActivated(searchPopup->currentItem()->text());
+        return;
+    }
+
     const QString text = searchField->text().trimmed();
     if (text.isEmpty()) {
         return;
@@ -88,12 +99,74 @@ void WeatherWidget::onSearchAccepted()
     }
 }
 
+void WeatherWidget::performSearch()
+{
+    const QString text = searchField->text().trimmed();
+    if (text.size() < 2) {
+        hideSearchPopup();
+        return;
+    }
+
+    const auto results = cities.search(text, maxSearchResults);
+    if (results.empty()) {
+        hideSearchPopup();
+        statusLabel->setText(QString("Город \"%1\" не найден в базе.").arg(text));
+        return;
+    }
+
+    statusLabel->clear();
+    searchPopup->clear();
+    for (const auto &entry : results) {
+        searchPopup->addItem(CityDirectory::displayName(entry));
+    }
+
+    // Popup right under the search field, same width
+    const QPoint fieldPos = searchField->mapTo(this, QPoint(0, searchField->height() + 4));
+    const int rowHeight = 32;
+    searchPopup->setGeometry(fieldPos.x(), fieldPos.y(), searchField->width(),
+                             rowHeight * static_cast<int>(results.size()) + 8);
+    searchPopup->setCurrentRow(0);
+    searchPopup->show();
+    searchPopup->raise();
+}
+
+void WeatherWidget::hideSearchPopup()
+{
+    searchPopup->hide();
+}
+
+bool WeatherWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == searchField && event->type() == QEvent::KeyPress) {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Escape) {
+            hideSearchPopup();
+            return true;
+        }
+        if ((keyEvent->key() == Qt::Key_Down || keyEvent->key() == Qt::Key_Up) &&
+            searchPopup->isVisible()) {
+            const int step = (keyEvent->key() == Qt::Key_Down) ? 1 : -1;
+            const int next = qBound(0, searchPopup->currentRow() + step,
+                                    searchPopup->count() - 1);
+            searchPopup->setCurrentRow(next);
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
 void WeatherWidget::selectCity(const CityDirectory::Entry &entry)
 {
     hasSelection = true;
     currentCoordinates = entry.coordinates;
     cityLabel->setText(entry.name);
+
+    // Setting the text programmatically must not reopen the popup
+    suppressSearch = true;
     searchField->setText(CityDirectory::displayName(entry));
+    suppressSearch = false;
+    hideSearchPopup();
+
     emit requestWeatherData(entry.coordinates.x(), entry.coordinates.y());
 }
 
@@ -110,19 +183,26 @@ void WeatherWidget::initWidgets()
     searchField->setObjectName("search");
     searchField->setPlaceholderText("Начните вводить город...");
     searchField->setClearButtonEnabled(true);
+    searchField->installEventFilter(this);
 
-    cityModel = new QStringListModel(cities.displayNames(), this);
-    cityCompleter = new QCompleter(cityModel, this);
-    cityCompleter->setCaseSensitivity(Qt::CaseInsensitive);
-    cityCompleter->setFilterMode(Qt::MatchContains);
-    cityCompleter->setCompletionMode(QCompleter::PopupCompletion);
-    cityCompleter->setMaxVisibleItems(10);
-    searchField->setCompleter(cityCompleter);
+    searchPopup = new QListWidget(this);
+    searchPopup->setObjectName("searchPopup");
+    searchPopup->setMouseTracking(true);
+    searchPopup->hide();
+
+    searchDebounce = new QTimer(this);
+    searchDebounce->setSingleShot(true);
+    searchDebounce->setInterval(searchDebounceMs);
 
     iconLabel = new QLabel(this);
+    iconLabel->setObjectName("iconEmoji");
+    iconLabel->setAlignment(Qt::AlignCenter);
     cityLabel = new QLabel(this);
     cityLabel->setObjectName("city");
     cityLabel->setAlignment(Qt::AlignCenter);
+    timeLabel = new QLabel(this);
+    timeLabel->setObjectName("secondary");
+    timeLabel->setAlignment(Qt::AlignCenter);
     temperatureLabel = new QLabel(this);
     temperatureLabel->setObjectName("temperature");
     feelsLikeLabel = new QLabel(this);
@@ -140,7 +220,6 @@ void WeatherWidget::initWidgets()
     statusLabel->setObjectName("status");
 
     refreshTimer = new QTimer(this);
-    iconDownloader = new QNetworkAccessManager(this);
 }
 
 void WeatherWidget::setupLayout()
@@ -173,6 +252,7 @@ void WeatherWidget::setupLayout()
     feelsLikeLabel->setAlignment(Qt::AlignCenter);
     cardLayout->addWidget(descriptionLabel);
     cardLayout->addWidget(feelsLikeLabel);
+    cardLayout->addWidget(timeLabel);
     cardLayout->addSpacing(8);
 
     auto *metricsLayout = new QGridLayout;
@@ -202,8 +282,14 @@ void WeatherWidget::setupLayout()
 
 void WeatherWidget::initConnects()
 {
-    connect(cityCompleter, QOverload<const QString &>::of(&QCompleter::activated), this,
-            &WeatherWidget::onCityActivated);
+    connect(searchField, &QLineEdit::textChanged, this, [this](const QString &) {
+        if (!suppressSearch) {
+            searchDebounce->start();
+        }
+    });
+    connect(searchDebounce, &QTimer::timeout, this, &WeatherWidget::performSearch);
+    connect(searchPopup, &QListWidget::itemClicked, this,
+            [this](QListWidgetItem *item) { onCityActivated(item->text()); });
     connect(searchField, &QLineEdit::returnPressed, this, &WeatherWidget::onSearchAccepted);
 
     // Periodic refresh of the currently selected city
@@ -249,6 +335,7 @@ void WeatherWidget::applyStyles()
         }
         QLabel#city { font-size: 24px; font-weight: bold; }
         QLabel#temperature { font-size: 52px; font-weight: bold; }
+        QLabel#iconEmoji { font-size: 56px; background: transparent; }
         QLabel#secondary { color: #9fb3c8; font-size: 15px; }
         QLabel#metricTitle { color: #9fb3c8; font-size: 13px; }
         QLabel#metricValue { font-size: 15px; font-weight: bold; }
@@ -266,9 +353,9 @@ void WeatherWidget::applyStyles()
         }
     )");
 
-    // Completion popup styling (it is a plain QListView owned by the completer)
-    cityCompleter->popup()->setStyleSheet(R"(
-        QListView {
+    // Search popup styling
+    searchPopup->setStyleSheet(R"(
+        QListWidget#searchPopup {
             background-color: #20303c;
             color: #e8eef2;
             border: 1px solid rgba(255, 255, 255, 40);
@@ -277,57 +364,35 @@ void WeatherWidget::applyStyles()
             outline: none;
             font-size: 14px;
         }
-        QListView::item {
+        QListWidget#searchPopup::item {
             padding: 7px 10px;
             border-radius: 5px;
         }
-        QListView::item:selected {
+        QListWidget#searchPopup::item:selected {
             background-color: #2c5364;
         }
-        QScrollBar:vertical {
-            background: transparent;
-            width: 8px;
-            margin: 4px 2px;
-        }
-        QScrollBar::handle:vertical {
-            background: rgba(255, 255, 255, 60);
-            border-radius: 4px;
-            min-height: 24px;
-        }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-            height: 0;
+        QListWidget#searchPopup::item:hover {
+            background-color: rgba(44, 83, 100, 120);
         }
     )");
 }
 
-void WeatherWidget::updateWeatherIcon(const QString &iconCode)
+QString WeatherWidget::iconEmoji(const QString &iconCode)
 {
-    if (iconCode.isEmpty()) {
-        iconLabel->clear();
-        return;
-    }
-
-    const auto cachedIcon = iconCache.constFind(iconCode);
-    if (cachedIcon != iconCache.constEnd()) {
-        iconLabel->setPixmap(cachedIcon.value());
-        return;
-    }
-
-    // Icon set: https://openweathermap.org/weather-conditions
-    const QUrl iconUrl(QString("https://openweathermap.org/img/wn/%1@2x.png").arg(iconCode));
-    QNetworkReply *reply = iconDownloader->get(QNetworkRequest(iconUrl));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, iconCode]() {
-        reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
-            return;
-        }
-        const QPixmap icon = QPixmap::fromImage(QImage::fromData(reply->readAll()));
-        if (icon.isNull()) {
-            return;
-        }
-        iconCache.insert(iconCode, icon);
-        iconLabel->setPixmap(icon);
-    });
+    // OpenWeatherMap icon codes -> universally readable emoji
+    // https://openweathermap.org/weather-conditions
+    static const QHash<QString, QString> emojiByCode = {
+        {"01d", "☀️"}, {"01n", "🌙"},
+        {"02d", "🌤"}, {"02n", "☁️"},
+        {"03d", "⛅"}, {"03n", "☁️"},
+        {"04d", "☁️"}, {"04n", "☁️"},
+        {"09d", "🌧"}, {"09n", "🌧"},
+        {"10d", "🌦"}, {"10n", "🌧"},
+        {"11d", "⛈"}, {"11n", "⛈"},
+        {"13d", "❄️"}, {"13n", "❄️"},
+        {"50d", "🌫"}, {"50n", "🌫"},
+    };
+    return emojiByCode.value(iconCode, "🌡");
 }
 
 QString WeatherWidget::formatTemperature(const double temperature)

@@ -55,6 +55,11 @@ void WeatherInfo::setCityName(const QString &cityName)
     this->cityName = cityName;
 }
 
+void WeatherInfo::setTimezoneOffset(const int offsetSeconds)
+{
+    this->timezoneOffset = offsetSeconds;
+}
+
 double WeatherInfo::getTemperature() const
 {
     return this->temperature;
@@ -103,4 +108,9 @@ const QString &WeatherInfo::getIconCode() const
 const QString &WeatherInfo::getCityName() const
 {
     return this->cityName;
+}
+
+int WeatherInfo::getTimezoneOffset() const
+{
+    return this->timezoneOffset;
 }

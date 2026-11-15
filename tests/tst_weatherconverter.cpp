@@ -26,7 +26,8 @@ void TestWeatherConverter::parsesValidJson()
         "weather": [{"description": "overcast clouds", "icon": "04d"}],
         "wind": {"speed": 3.03, "deg": 231},
         "clouds": {"all": 96},
-        "name": "Москва"
+        "name": "Москва",
+        "timezone": 10800
     })";
 
     WeatherConverter converter;
@@ -43,6 +44,7 @@ void TestWeatherConverter::parsesValidJson()
     QCOMPARE(info.getWeatherDescription(), QString("overcast clouds"));
     QCOMPARE(info.getIconCode(), QString("04d"));
     QCOMPARE(info.getCityName(), QString("Москва"));
+    QCOMPARE(info.getTimezoneOffset(), 10800);
     QCOMPARE(info.getWindSpeed(), 3.03);
     QCOMPARE(info.getWindDirection(), 231);
     QCOMPARE(info.getCloudiness(), 96);
