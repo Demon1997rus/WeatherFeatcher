@@ -42,6 +42,8 @@ private:
     void setDefaultValues();
     void applyStyles();
     void selectCity(const CityDirectory::Entry &entry);
+    void showBrowseList();
+    void showResults(const std::vector<CityDirectory::Entry> &results);
     void hideSearchPopup();
 
     static QString iconEmoji(const QString &iconCode);

@@ -104,8 +104,11 @@ void WeatherWidget::onSearchAccepted()
 void WeatherWidget::performSearch()
 {
     const QString text = searchField->text().trimmed();
+    if (text.isEmpty()) {
+        showBrowseList();
+        return;
+    }
 
-    // Empty text: show the most populated cities as a browsable list
     const auto results = cities.search(text, maxSearchResults);
     if (results.empty()) {
         hideSearchPopup();
@@ -113,6 +116,17 @@ void WeatherWidget::performSearch()
         return;
     }
 
+    showResults(results);
+}
+
+void WeatherWidget::showBrowseList()
+{
+    // Browse mode: top cities by population, regardless of the field text
+    showResults(cities.search("", maxSearchResults));
+}
+
+void WeatherWidget::showResults(const std::vector<CityDirectory::Entry> &results)
+{
     statusLabel->clear();
     searchPopup->clear();
     for (const auto &entry : results) {
@@ -139,7 +153,7 @@ bool WeatherWidget::eventFilter(QObject *watched, QEvent *event)
     if (watched == searchField && event->type() == QEvent::FocusIn) {
         // Focusing an empty field shows the top cities right away
         if (searchField->text().trimmed().isEmpty()) {
-            QTimer::singleShot(0, this, &WeatherWidget::performSearch);
+            QTimer::singleShot(0, this, &WeatherWidget::showBrowseList);
         }
         return false;
     }
@@ -158,7 +172,7 @@ bool WeatherWidget::eventFilter(QObject *watched, QEvent *event)
         }
         if ((keyEvent->key() == Qt::Key_Down || keyEvent->key() == Qt::Key_Up)) {
             if (!searchPopup->isVisible()) {
-                performSearch();
+                showBrowseList();
                 return true;
             }
             const int step = (keyEvent->key() == Qt::Key_Down) ? 1 : -1;
@@ -210,7 +224,7 @@ void WeatherWidget::initWidgets()
             hideSearchPopup();
         } else {
             searchField->setFocus();
-            performSearch();
+            showBrowseList();
         }
     });
 
