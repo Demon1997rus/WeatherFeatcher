@@ -1,11 +1,13 @@
 #include "weatherwidget.h"
 
+#include <QAction>
 #include <QDateTime>
 #include <QGridLayout>
 #include <QHash>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QListWidget>
+#include <QStyle>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -102,11 +104,8 @@ void WeatherWidget::onSearchAccepted()
 void WeatherWidget::performSearch()
 {
     const QString text = searchField->text().trimmed();
-    if (text.size() < 2) {
-        hideSearchPopup();
-        return;
-    }
 
+    // Empty text: show the most populated cities as a browsable list
     const auto results = cities.search(text, maxSearchResults);
     if (results.empty()) {
         hideSearchPopup();
@@ -137,14 +136,31 @@ void WeatherWidget::hideSearchPopup()
 
 bool WeatherWidget::eventFilter(QObject *watched, QEvent *event)
 {
+    if (watched == searchField && event->type() == QEvent::FocusIn) {
+        // Focusing an empty field shows the top cities right away
+        if (searchField->text().trimmed().isEmpty()) {
+            QTimer::singleShot(0, this, &WeatherWidget::performSearch);
+        }
+        return false;
+    }
+
+    if (watched == searchField && event->type() == QEvent::FocusOut) {
+        // Delayed hide so a click on a popup row is processed first
+        QTimer::singleShot(150, this, &WeatherWidget::hideSearchPopup);
+        return false;
+    }
+
     if (watched == searchField && event->type() == QEvent::KeyPress) {
         auto *keyEvent = static_cast<QKeyEvent *>(event);
         if (keyEvent->key() == Qt::Key_Escape) {
             hideSearchPopup();
             return true;
         }
-        if ((keyEvent->key() == Qt::Key_Down || keyEvent->key() == Qt::Key_Up) &&
-            searchPopup->isVisible()) {
+        if ((keyEvent->key() == Qt::Key_Down || keyEvent->key() == Qt::Key_Up)) {
+            if (!searchPopup->isVisible()) {
+                performSearch();
+                return true;
+            }
             const int step = (keyEvent->key() == Qt::Key_Down) ? 1 : -1;
             const int next = qBound(0, searchPopup->currentRow() + step,
                                     searchPopup->count() - 1);
@@ -184,6 +200,19 @@ void WeatherWidget::initWidgets()
     searchField->setPlaceholderText("Начните вводить город...");
     searchField->setClearButtonEnabled(true);
     searchField->installEventFilter(this);
+
+    // Drop-down affordance: opens the top-cities list on click
+    auto *dropdownAction =
+        searchField->addAction(style()->standardIcon(QStyle::SP_ArrowDown),
+                               QLineEdit::TrailingPosition);
+    connect(dropdownAction, &QAction::triggered, this, [this]() {
+        if (searchPopup->isVisible()) {
+            hideSearchPopup();
+        } else {
+            searchField->setFocus();
+            performSearch();
+        }
+    });
 
     searchPopup = new QListWidget(this);
     searchPopup->setObjectName("searchPopup");
