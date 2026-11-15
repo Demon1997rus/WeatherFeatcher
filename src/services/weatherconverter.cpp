@@ -11,7 +11,7 @@ void WeatherConverter::convertToWeatherInfo(const QByteArray &data) const
 {
     QJsonParseError jsonError;
     const QJsonDocument weatherDoc = QJsonDocument::fromJson(data, &jsonError);
-    if (jsonError.error != jsonError.NoError) {
+    if (jsonError.error != QJsonParseError::NoError) {
         qCritical() << Q_FUNC_INFO;
         qCritical() << jsonError.errorString();
         return;

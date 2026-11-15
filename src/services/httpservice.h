@@ -2,15 +2,20 @@
 
 #include <QObject>
 
+class QNetworkAccessManager;
+
 class HttpService : public QObject {
     Q_OBJECT
 public:
     explicit HttpService(QObject *parent = nullptr);
 
 public slots:
-    void fetchWeatherData(const double latitude, const double longitude) const;
+    void fetchWeatherData(double latitude, double longitude);
 
 signals:
-    void weatherDataReceived(const QByteArray &response) const;
-    void requestError(const QString &errorMessage) const;
+    void weatherDataReceived(const QByteArray &response);
+    void requestError(const QString &errorMessage);
+
+private:
+    QNetworkAccessManager *networkManager = nullptr;
 };

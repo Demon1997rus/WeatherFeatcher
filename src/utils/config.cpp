@@ -54,7 +54,7 @@ bool Config::loadConfig(const QString &configPath)
         city.setCity(cityData["name"].toString().toStdString());
         city.setLatitude(cityData["latitude"].toDouble());
         city.setLongitude(cityData["longitude"].toDouble());
-        coordinates_cities.emplace_back(qMove(city));
+        coordinates_cities.emplace_back(std::move(city));
     }
 
     return true;

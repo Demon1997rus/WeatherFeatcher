@@ -1,67 +1,53 @@
 #include "httpservice.h"
 
-#include <memory>
-#include <sstream>
-
-#include <curl/curl.h>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QUrl>
+#include <QUrlQuery>
 
 #include "utils/config.h"
 
-constexpr static size_t maxUrlSize = 256;
-
-HttpService::HttpService(QObject *parent) : QObject(parent) {}
-
-size_t writeCallback(void *contents, size_t size, size_t nmemb, QByteArray *userp)
-{
-    const size_t res = size * nmemb;
-    userp->reserve(userp->size() + static_cast<int>(res));
-    userp->append(static_cast<const char *>(contents), static_cast<int>(res));
-    return res;
+namespace {
+constexpr int requestTimeoutMs = 10000;
 }
 
-void curlDeleter(CURL *curl)
+HttpService::HttpService(QObject *parent) :
+    QObject(parent), networkManager(new QNetworkAccessManager(this))
 {
-    if (curl) {
-        curl_easy_cleanup(curl);
-    }
 }
 
-void HttpService::fetchWeatherData(const double latitude, const double longitude) const
+void HttpService::fetchWeatherData(const double latitude, const double longitude)
 {
-    std::unique_ptr<CURL, decltype(&curlDeleter)> curlHandle(curl_easy_init(), curlDeleter);
-    if (!curlHandle) {
-        emit requestError(
-            "Не удалось инициализировать соединение. Пожалуйста, попробуйте еще раз или обратитесь в поддержку.");
-        return;
-    }
+    QUrl url("https://api.openweathermap.org/data/2.5/weather");
+    QUrlQuery query;
+    query.addQueryItem("lat", QString::number(latitude, 'f', 6));
+    query.addQueryItem("lon", QString::number(longitude, 'f', 6));
+    query.addQueryItem("appid", QString::fromStdString(Config::instance().apiKey()));
+    url.setQuery(query);
 
-    char urlBuffer[maxUrlSize];
-    std::snprintf(urlBuffer, sizeof(urlBuffer),
-                  "https://api.openweathermap.org/data/2.5/weather?lat=%.6f&lon=%.6f&appid=%s",
-                  latitude, longitude, Config::instance().apiKey().c_str());
-    QByteArray response;
-    curl_easy_setopt(curlHandle.get(), CURLOPT_URL, urlBuffer);
-    curl_easy_setopt(curlHandle.get(), CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(curlHandle.get(), CURLOPT_WRITEDATA, &response);
+    QNetworkRequest request(url);
+    request.setTransferTimeout(requestTimeoutMs);
 
-    CURLcode res = curl_easy_perform(curlHandle.get());
-    if (res != CURLE_OK) {
-        const QString errorMessage =
-            QString("Запрос не выполнен: %1").arg(curl_easy_strerror(res));
-        emit requestError(errorMessage);
-        return;
-    }
+    QNetworkReply *reply = networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
 
-    long responseCode;
-    curl_easy_getinfo(curlHandle.get(), CURLINFO_RESPONSE_CODE, &responseCode);
+        if (reply->error() != QNetworkReply::NoError) {
+            emit requestError(QString("Запрос не выполнен: %1").arg(reply->errorString()));
+            return;
+        }
 
-    if (responseCode != 200) {
-        const QString errorMessage = QString("Ошибка запроса с кодом ответа: %1\nОтвет: %2")
-                                         .arg(responseCode)
-                                         .arg(QString(response));
-        emit requestError(errorMessage);
-        return;
-    }
+        const QByteArray response = reply->readAll();
+        const int statusCode =
+            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (statusCode != 200) {
+            emit requestError(QString("Ошибка запроса с кодом ответа: %1\nОтвет: %2")
+                                  .arg(statusCode)
+                                  .arg(QString::fromUtf8(response)));
+            return;
+        }
 
-    emit weatherDataReceived(response);
+        emit weatherDataReceived(response);
+    });
 }

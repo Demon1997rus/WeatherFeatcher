@@ -1,9 +1,9 @@
 #include "weatherwidget.h"
 
 #include <QApplication>
-#include <QDesktopWidget>
+#include <QCoreApplication>
 #include <QMessageBox>
-#include <QPair>
+#include <QPointF>
 
 #include "utils/config.h"
 
@@ -41,8 +41,8 @@ void WeatherWidget::displayError(const QString &errorMessage)
 
 void WeatherWidget::onCitySelected(int index)
 {
-    auto coordinates = cbCities->itemData(index).value<QPair<double, double>>();
-    emit requestWeatherData(coordinates.first, coordinates.second);
+    const QPointF coordinates = cbCities->itemData(index).toPointF();
+    emit requestWeatherData(coordinates.x(), coordinates.y());
 }
 
 void WeatherWidget::initWidgets()
@@ -64,9 +64,8 @@ void WeatherWidget::settingsWidgets()
 {
     // Настройка комбобокса со списком городов
     for (const auto &city : Config::instance().coordinatesCities()) {
-        cbCities->addItem(
-            QString::fromStdString(city.getCity()),
-            QVariant::fromValue(qMakePair(city.getLatitude(), city.getLongitude())));
+        cbCities->addItem(QString::fromStdString(city.getCity()),
+                          QPointF(city.getLatitude(), city.getLongitude()));
     }
     searchField->setPlaceholderText("Поиск города...");
     cbCities->setEditable(true);
@@ -127,7 +126,8 @@ void WeatherWidget::applyStyles()
 
 void WeatherWidget::dynamicBackground()
 {
-    QPixmap background("../data/background.jpg");
+    // The background image is copied next to the executable at build time
+    QPixmap background(QCoreApplication::applicationDirPath() + "/data/background.jpg");
     background = background.scaled(this->size(), Qt::IgnoreAspectRatio);
     QPalette palette;
     palette.setBrush(QPalette::Window, background);
