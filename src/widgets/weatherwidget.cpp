@@ -1,12 +1,14 @@
 #include "weatherwidget.h"
 
-#include <QApplication>
 #include <QCoreApplication>
+#include <QGridLayout>
+#include <QHBoxLayout>
 #include <QImage>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QPointF>
 #include <QTimer>
+#include <QVBoxLayout>
 
 #include "utils/config.h"
 
@@ -17,9 +19,9 @@ constexpr int refreshIntervalMs = 10 * 60 * 1000; // Refresh weather every 10 mi
 WeatherWidget::WeatherWidget(QWidget *parent) : QWidget(parent)
 {
     initWidgets();
-    settingsWidgets();
     setupLayout();
     initConnects();
+    setDefaultValues();
     applyStyles();
 }
 
@@ -30,22 +32,17 @@ void WeatherWidget::loadCurrentCityWeather()
 
 void WeatherWidget::displayWeatherData(const WeatherInfo &info)
 {
-    // Temperature with one decimal and an explicit sign, e.g. "+3.3"
-    const auto formatTemp = [](double temperature) {
-        return QString("%1%2").arg(temperature > 0 ? "+" : "").arg(temperature, 0, 'f', 1);
-    };
-
     statusLabel->clear();
     updateWeatherIcon(info.getIconCode());
 
-    temperatureLabel->setText(QString("Температура: %1 °C").arg(formatTemp(info.getTemperature())));
-    feelsLikeLabel->setText(QString("Ощущается как: %1 °C").arg(formatTemp(info.getFeelsLike())));
-    descriptionLabel->setText(QString("Описание: %1").arg(info.getWeatherDescription()));
-    humidityLabel->setText(QString("Влажность: %1%").arg(info.getHumidity()));
-    pressureLabel->setText(QString("Давление: %1 hPa").arg(info.getPressure()));
-    windSpeedLabel->setText(QString("Скорость ветра: %1 м/с").arg(info.getWindSpeed()));
-    windDirectionLabel->setText(QString("Направление ветра: %1°").arg(info.getWindDirection()));
-    cloudinessLabel->setText(QString("Облачность: %1%").arg(info.getCloudiness()));
+    temperatureLabel->setText(formatTemperature(info.getTemperature()));
+    feelsLikeLabel->setText(QString("Ощущается как %1").arg(formatTemperature(info.getFeelsLike())));
+    descriptionLabel->setText(info.getWeatherDescription());
+    humidityValue->setText(QString("%1%").arg(info.getHumidity()));
+    pressureValue->setText(QString("%1 hPa").arg(info.getPressure()));
+    windSpeedValue->setText(QString("%1 м/с").arg(info.getWindSpeed()));
+    windDirectionValue->setText(windDirectionText(info.getWindDirection()));
+    cloudinessValue->setText(QString("%1%").arg(info.getCloudiness()));
 }
 
 void WeatherWidget::displayError(const QString &errorMessage)
@@ -61,56 +58,98 @@ void WeatherWidget::onCitySelected(int index)
     emit requestWeatherData(coordinates.x(), coordinates.y());
 }
 
+QLabel *WeatherWidget::createValueLabel()
+{
+    auto *label = new QLabel(this);
+    label->setObjectName("metricValue");
+    return label;
+}
+
 void WeatherWidget::initWidgets()
 {
-    mainLayout = new QGridLayout(this);
     cbCities = new QComboBox(this);
     searchField = new QLineEdit(this);
+    searchField->setPlaceholderText("Поиск города...");
+    cbCities->setEditable(true);
+    cbCities->setLineEdit(searchField);
+
+    // Cities from the config: name is displayed, coordinates travel in item data
+    for (const auto &city : Config::instance().coordinatesCities()) {
+        cbCities->addItem(QString::fromStdString(city.getCity()),
+                          QPointF(city.getLatitude(), city.getLongitude()));
+    }
+
     iconLabel = new QLabel(this);
     temperatureLabel = new QLabel(this);
+    temperatureLabel->setObjectName("temperature");
     feelsLikeLabel = new QLabel(this);
+    feelsLikeLabel->setObjectName("secondary");
     descriptionLabel = new QLabel(this);
-    humidityLabel = new QLabel(this);
-    pressureLabel = new QLabel(this);
-    windSpeedLabel = new QLabel(this);
-    windDirectionLabel = new QLabel(this);
-    cloudinessLabel = new QLabel(this);
+    descriptionLabel->setObjectName("secondary");
+
+    humidityValue = createValueLabel();
+    pressureValue = createValueLabel();
+    windSpeedValue = createValueLabel();
+    windDirectionValue = createValueLabel();
+    cloudinessValue = createValueLabel();
+
     statusLabel = new QLabel(this);
+    statusLabel->setObjectName("status");
 
     refreshTimer = new QTimer(this);
     iconDownloader = new QNetworkAccessManager(this);
 }
 
-void WeatherWidget::settingsWidgets()
-{
-    // Настройка комбобокса со списком городов
-    for (const auto &city : Config::instance().coordinatesCities()) {
-        cbCities->addItem(QString::fromStdString(city.getCity()),
-                          QPointF(city.getLatitude(), city.getLongitude()));
-    }
-    searchField->setPlaceholderText("Поиск города...");
-    cbCities->setEditable(true);
-    cbCities->setLineEdit(searchField);
-
-    // Установка дефолтных значения для виджетов
-    setDefaultValues();
-}
-
 void WeatherWidget::setupLayout()
 {
-    mainLayout->addWidget(cbCities);
-    mainLayout->addWidget(iconLabel);
-    mainLayout->addWidget(temperatureLabel);
-    mainLayout->addWidget(feelsLikeLabel);
-    mainLayout->addWidget(descriptionLabel);
-    mainLayout->addWidget(humidityLabel);
-    mainLayout->addWidget(pressureLabel);
-    mainLayout->addWidget(windSpeedLabel);
-    mainLayout->addWidget(windDirectionLabel);
-    mainLayout->addWidget(cloudinessLabel);
-    mainLayout->addWidget(statusLabel);
+    auto *rootLayout = new QVBoxLayout(this);
+    rootLayout->setContentsMargins(48, 24, 48, 24);
 
-    mainLayout->setRowStretch(mainLayout->count(), 1);
+    cbCities->setFixedWidth(420);
+    rootLayout->addWidget(cbCities, 0, Qt::AlignHCenter);
+    rootLayout->addStretch(1);
+
+    // Central card with all weather data
+    auto *card = new QWidget(this);
+    card->setObjectName("card");
+    card->setFixedWidth(520);
+    auto *cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(32, 28, 32, 28);
+    cardLayout->setSpacing(10);
+
+    auto *headerLayout = new QHBoxLayout;
+    headerLayout->addWidget(iconLabel);
+    headerLayout->addWidget(temperatureLabel);
+    headerLayout->addStretch(1);
+    cardLayout->addLayout(headerLayout);
+
+    cardLayout->addWidget(descriptionLabel);
+    cardLayout->addWidget(feelsLikeLabel);
+    cardLayout->addSpacing(8);
+
+    auto *metricsLayout = new QGridLayout;
+    metricsLayout->setHorizontalSpacing(48);
+    metricsLayout->setVerticalSpacing(8);
+    // Two title/value columns per row; the layout takes ownership of the labels
+    const auto addMetric = [this, metricsLayout](int row, int column, const QString &title,
+                                                 QLabel *value) {
+        auto *titleLabel = new QLabel(title, this);
+        titleLabel->setObjectName("metricTitle");
+        metricsLayout->addWidget(titleLabel, row, column * 2);
+        metricsLayout->addWidget(value, row, column * 2 + 1);
+    };
+    addMetric(0, 0, "Влажность", humidityValue);
+    addMetric(0, 1, "Давление", pressureValue);
+    addMetric(1, 0, "Ветер", windSpeedValue);
+    addMetric(1, 1, "Направление", windDirectionValue);
+    addMetric(2, 0, "Облачность", cloudinessValue);
+    cardLayout->addLayout(metricsLayout);
+
+    rootLayout->addWidget(card, 0, Qt::AlignHCenter);
+    rootLayout->addStretch(1);
+
+    statusLabel->setAlignment(Qt::AlignCenter);
+    rootLayout->addWidget(statusLabel);
 }
 
 void WeatherWidget::initConnects()
@@ -125,31 +164,61 @@ void WeatherWidget::initConnects()
 
 void WeatherWidget::setDefaultValues()
 {
-    temperatureLabel->setText("Температура: -- °C");
-    feelsLikeLabel->setText("Ощущается как: -- °C");
-    descriptionLabel->setText("Описание: --");
-    humidityLabel->setText("Влажность: --%");
-    pressureLabel->setText("Давление: -- hPa");
-    windSpeedLabel->setText("Скорость ветра: -- м/с");
-    windDirectionLabel->setText("Направление ветра: --°");
-    cloudinessLabel->setText("Облачность: --%");
+    temperatureLabel->setText("-- °C");
+    feelsLikeLabel->setText("Ощущается как -- °C");
+    descriptionLabel->clear();
+    iconLabel->clear();
+    humidityValue->setText("--%");
+    pressureValue->setText("-- hPa");
+    windSpeedValue->setText("-- м/с");
+    windDirectionValue->setText("--");
+    cloudinessValue->setText("--%");
 }
 
 void WeatherWidget::applyStyles()
 {
-    dynamicBackground();
+    // Resolution-independent diagonal gradient as the window background
+    QLinearGradient gradient(0.0, 0.0, 1.0, 1.0);
+    gradient.setCoordinateMode(QGradient::ObjectBoundingMode);
+    gradient.setColorAt(0.0, QColor("#0f2027"));
+    gradient.setColorAt(0.5, QColor("#203a43"));
+    gradient.setColorAt(1.0, QColor("#2c5364"));
+    QPalette palette;
+    palette.setBrush(QPalette::Window, QBrush(gradient));
+    setAutoFillBackground(true);
+    setPalette(palette);
 
-    QString labelStyle = "QLabel { color: white; }";
-
-    temperatureLabel->setStyleSheet(labelStyle);
-    feelsLikeLabel->setStyleSheet(labelStyle);
-    descriptionLabel->setStyleSheet(labelStyle);
-    humidityLabel->setStyleSheet(labelStyle);
-    pressureLabel->setStyleSheet(labelStyle);
-    windSpeedLabel->setStyleSheet(labelStyle);
-    windDirectionLabel->setStyleSheet(labelStyle);
-    cloudinessLabel->setStyleSheet(labelStyle);
-    statusLabel->setStyleSheet("QLabel { color: #ff6666; }");
+    setStyleSheet(R"(
+        QWidget#card {
+            background-color: rgba(255, 255, 255, 16);
+            border-radius: 18px;
+        }
+        QLabel {
+            color: #e8eef2;
+            background: transparent;
+        }
+        QLabel#temperature { font-size: 52px; font-weight: bold; }
+        QLabel#secondary { color: #9fb3c8; font-size: 15px; }
+        QLabel#metricTitle { color: #9fb3c8; font-size: 13px; }
+        QLabel#metricValue { font-size: 15px; font-weight: bold; }
+        QLabel#status { color: #ff7b72; }
+        QComboBox {
+            background-color: rgba(255, 255, 255, 16);
+            color: #e8eef2;
+            border: 1px solid rgba(255, 255, 255, 40);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+        QComboBox::drop-down { border: none; width: 28px; }
+        QComboBox QAbstractItemView {
+            background-color: #20303c;
+            color: #e8eef2;
+            selection-background-color: #2c5364;
+            border: 1px solid rgba(255, 255, 255, 40);
+        }
+        QLineEdit { background: transparent; color: #e8eef2; border: none; }
+    )");
 }
 
 void WeatherWidget::updateWeatherIcon(const QString &iconCode)
@@ -182,18 +251,14 @@ void WeatherWidget::updateWeatherIcon(const QString &iconCode)
     });
 }
 
-void WeatherWidget::dynamicBackground()
+QString WeatherWidget::formatTemperature(const double temperature)
 {
-    // The background image is copied next to the executable at build time
-    QPixmap background(QCoreApplication::applicationDirPath() + "/data/background.jpg");
-    background = background.scaled(this->size(), Qt::IgnoreAspectRatio);
-    QPalette palette;
-    palette.setBrush(QPalette::Window, background);
-    this->setPalette(palette);
+    return QString("%1%2 °C").arg(temperature > 0 ? "+" : "").arg(temperature, 0, 'f', 1);
 }
 
-void WeatherWidget::resizeEvent(QResizeEvent *event)
+QString WeatherWidget::windDirectionText(const int degrees)
 {
-    dynamicBackground();
-    QWidget::resizeEvent(event);
+    static const QStringList directions = {"С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"};
+    const int index = static_cast<int>((degrees + 22.5) / 45.0) % 8;
+    return QString("%1 (%2°)").arg(directions.at(index)).arg(degrees);
 }
