@@ -45,6 +45,11 @@ void WeatherInfo::setCloudiness(const int cloudiness)
     this->cloudiness = cloudiness;
 }
 
+void WeatherInfo::setIconCode(const QString &iconCode)
+{
+    this->iconCode = iconCode;
+}
+
 double WeatherInfo::getTemperature() const
 {
     return this->temperature;
@@ -83,4 +88,9 @@ int WeatherInfo::getWindDirection() const
 int WeatherInfo::getCloudiness() const
 {
     return this->cloudiness;
+}
+
+const QString &WeatherInfo::getIconCode() const
+{
+    return this->iconCode;
 }

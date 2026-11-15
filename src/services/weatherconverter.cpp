@@ -35,6 +35,7 @@ void WeatherConverter::convertToWeatherInfo(const QByteArray &data) const
         if (!weatherArray.isEmpty()) {
             const QJsonObject weatherDetails = weatherArray.first().toObject();
             weatherInfo.setWeatherDescription(weatherDetails["description"].toString());
+            weatherInfo.setIconCode(weatherDetails["icon"].toString());
         }
     }
 

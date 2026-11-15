@@ -2,11 +2,16 @@
 
 #include <QComboBox>
 #include <QGridLayout>
+#include <QHash>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPixmap>
 #include <QWidget>
 
 #include "structures/weatherinfo.h"
+
+class QNetworkAccessManager;
+class QTimer;
 
 class WeatherWidget : public QWidget {
     Q_OBJECT
@@ -33,11 +38,13 @@ private:
     void setDefaultValues();
     void applyStyles();
     void dynamicBackground();
+    void updateWeatherIcon(const QString &iconCode);
 
 private:
     QGridLayout *mainLayout = nullptr;
     QComboBox *cbCities = nullptr;
     QLineEdit *searchField = nullptr;
+    QLabel *iconLabel = nullptr;
     QLabel *temperatureLabel = nullptr;
     QLabel *feelsLikeLabel = nullptr;
     QLabel *descriptionLabel = nullptr;
@@ -46,6 +53,11 @@ private:
     QLabel *windSpeedLabel = nullptr;
     QLabel *windDirectionLabel = nullptr;
     QLabel *cloudinessLabel = nullptr;
+    QLabel *statusLabel = nullptr;
+
+    QTimer *refreshTimer = nullptr;
+    QNetworkAccessManager *iconDownloader = nullptr;
+    QHash<QString, QPixmap> iconCache;
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
