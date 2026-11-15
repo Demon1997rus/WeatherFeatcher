@@ -1,18 +1,13 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 
-get_filename_component(FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+project(WeatherFetcher LANGUAGES CXX)
 
-project(${FILE_NAME})
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# specify the C++ standard
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_AUTOMOC ON)
 
-include(cmake-helper/cmake-helper.cmake)
-
-
-use_qt5()
-use_libcurl()
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 
 add_subdirectory(src)
-

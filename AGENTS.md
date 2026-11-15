@@ -1,0 +1,41 @@
+# AGENTS.md — WeatherFeatcher
+
+## Проект
+Qt 6 / C++17 десктоп-приложение погоды (OpenWeatherMap). Pet-проект, кросс-платформенный
+(Windows/Linux), сборка через CMake Presets.
+
+## Команды
+- Сборка Windows (MSVC, Qt в D:/programs/Qt/6.12.0/msvc2022_64):
+  `cmake --preset windows-debug && cmake --build --preset windows-debug`
+  `cmake --preset windows-release && cmake --build --preset windows-release`
+- Сборка Linux: пресеты `linux-debug` / `linux-release` (Qt 6 из системы).
+- Запуск: бинарь в `build/windows/src/<Debug|Release>/weather-fetcher.exe`.
+  Данные (`data/`) копируются рядом с бинарём при сборке — запуск из любой папки.
+- Требуется переменная окружения `OPENWEATHER_API_KEY`, иначе приложение падает при старте.
+- Тесты: отсутствуют. Новый код покрывать Qt Test в `tests/` (Qt6::Test).
+
+## Правила стиля
+- C++17, Qt 6. Заголовки — `#pragma once`. Слоты/сигналы — `Q_OBJECT` + connect с указателями на члены.
+- Комментарии и документация — по-английски. UI-строки — по-русски (интерфейс русский).
+- Qt-виджеты создавать через `new` с parent'ом — НЕ заворачивать в smart pointers.
+- Plain-data структуры: инициализировать ВСЕ поля (NSDMI), rule-of-zero, без Boost.
+- Новые зависимости — только через `find_package` в CMakeLists.
+- Исходники перечислять явно в src/CMakeLists.txt — `file(GLOB)` запрещён.
+
+## Запреты
+- НЕ коммитить API-ключи/токены. Ключ — только через `OPENWEATHER_API_KEY`.
+- НЕ делать блокирующих вызовов (сеть, файлы) в GUI-потоке. Сеть — QNetworkAccessManager,
+  таймаут обязателен (см. src/services/httpservice.cpp).
+- НЕ использовать API, удалённые/deprecated в Qt 6 (qMove, QDesktopWidget, ...).
+
+## Требует approve перед изменением
+- `data/config.json` (список городов), `data/background.jpg`.
+- `src/utils/config.*` (синглтон, точка отказа всего приложения).
+- Смена стандарта C++, мажорной версии Qt, добавление CI/тестовой инфраструктуры.
+
+## Известные долги (не чинить без явного запроса)
+- Ошибки сети показываются модальным QMessageBox — лучше строка статуса/toast.
+- Поле поиска в комбобоксе есть, но добавления городов через Geocoding API нет.
+- Нет автообновления погоды по таймеру.
+- `Config` — синглтон; затрудняет тестирование.
+- init.sh больше не нужен (cmake-helper удалён из сборки) — кандидат на удаление.
