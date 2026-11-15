@@ -14,6 +14,10 @@ qt_add_executable(${TARGET}
     utils/citydirectory.h
     utils/config.cpp
     utils/config.h
+    widgets/citysearchbox.cpp
+    widgets/citysearchbox.h
+    widgets/weathercard.cpp
+    widgets/weathercard.h
     widgets/weatherwidget.cpp
     widgets/weatherwidget.h
 )

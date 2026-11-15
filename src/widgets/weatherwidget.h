@@ -1,17 +1,18 @@
 #pragma once
 
-#include <QLabel>
-#include <QLineEdit>
 #include <QPointF>
 #include <QWidget>
 
 #include "structures/weatherinfo.h"
 #include "utils/citydirectory.h"
 
-class QNetworkAccessManager;
-class QListWidget;
+class CitySearchBox;
+class QLabel;
 class QTimer;
+class WeatherCard;
 
+// Top-level window: composes CitySearchBox, WeatherCard and a status line,
+// owns the periodic refresh timer. Single outward signal: requestWeatherData.
 class WeatherWidget : public QWidget {
     Q_OBJECT
 public:
@@ -26,53 +27,17 @@ public slots:
 signals:
     void requestWeatherData(double latitude, double longitude);
 
-private slots:
-    void onCityActivated(const QString &displayName);
-    void onSearchAccepted();
-    void performSearch();
-
-protected:
-    bool eventFilter(QObject *watched, QEvent *event) override;
-
 private:
-    QLabel *createValueLabel();
-    void initWidgets();
     void setupLayout();
     void initConnects();
-    void setDefaultValues();
     void applyStyles();
-    void selectCity(const CityDirectory::Entry &entry);
-    void showBrowseList();
-    void showResults(const std::vector<CityDirectory::Entry> &results);
-    void hideSearchPopup();
+    void onCitySelected(const CityDirectory::Entry &entry);
 
-    static QString iconEmoji(const QString &iconCode);
-    static QString formatTemperature(double temperature);
-    static QString windDirectionText(int degrees);
-
-private:
-    const CityDirectory &cities;
-
-    QLineEdit *searchField = nullptr;
-    QListWidget *searchPopup = nullptr;
-    QTimer *searchDebounce = nullptr;
-    bool suppressSearch = false;
-
-    QLabel *iconLabel = nullptr;
-    QLabel *cityLabel = nullptr;
-    QLabel *timeLabel = nullptr;
-    QLabel *temperatureLabel = nullptr;
-    QLabel *feelsLikeLabel = nullptr;
-    QLabel *descriptionLabel = nullptr;
-    QLabel *humidityValue = nullptr;
-    QLabel *pressureValue = nullptr;
-    QLabel *windSpeedValue = nullptr;
-    QLabel *windDirectionValue = nullptr;
-    QLabel *cloudinessValue = nullptr;
+    CitySearchBox *searchBox = nullptr;
+    WeatherCard *card = nullptr;
     QLabel *statusLabel = nullptr;
+    QTimer *refreshTimer = nullptr;
 
     QPointF currentCoordinates;
     bool hasSelection = false;
-
-    QTimer *refreshTimer = nullptr;
 };
