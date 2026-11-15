@@ -3,6 +3,7 @@
 #include <QTimer>
 
 #include "presenter/weathercontroller.h"
+#include "utils/citydirectory.h"
 #include "utils/config.h"
 #include "widgets/weatherwidget.h"
 
@@ -10,9 +11,9 @@ namespace {
 
 // Hidden developer option: renders the widget with sample data into a PNG and quits.
 // Usage: weather-fetcher --screenshot out.png [-platform offscreen]
-int runScreenshotMode(QApplication &app, const QString &outputPath)
+int runScreenshotMode(QApplication &app, const QString &outputPath, CityDirectory &cities)
 {
-    WeatherWidget widget;
+    WeatherWidget widget(cities);
 
     WeatherInfo sample;
     sample.setTemperature(3.3);
@@ -24,7 +25,6 @@ int runScreenshotMode(QApplication &app, const QString &outputPath)
     sample.setWindDirection(231);
     sample.setCloudiness(96);
     sample.setIconCode("04d");
-    sample.setCityName("Москва");
 
     widget.resize(1280, 800);
     widget.show();
@@ -43,19 +43,25 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
+    // The offline city database lives next to the executable
+    CityDirectory cities;
+    const QString citiesPath = QCoreApplication::applicationDirPath() + "/data/cities.json";
+    if (!cities.load(citiesPath)) {
+        qFatal("Couldn't load the city database: \"%s\"", citiesPath.toUtf8().constData());
+    }
+
+    // Screenshot mode needs no API key
     const QStringList args = app.arguments();
     const int screenshotIndex = args.indexOf("--screenshot");
     if (screenshotIndex != -1 && screenshotIndex + 1 < args.size()) {
-        return runScreenshotMode(app, args.at(screenshotIndex + 1));
+        return runScreenshotMode(app, args.at(screenshotIndex + 1), cities);
     }
 
-    // Global config is loaded from the "data" directory next to the executable
-    const QString configPath = QCoreApplication::applicationDirPath() + "/data/config.json";
-    if (!Config::instance().loadConfig(configPath)) {
-        qFatal("Couldn't load the config: \"%s\"", configPath.toUtf8().constData());
+    if (Config::instance().apiKey().isEmpty()) {
+        qFatal("Environment variable OPENWEATHER_API_KEY is not set");
     }
 
-    WeatherController controller(&app);
+    WeatherController controller(cities, &app);
 
     return app.exec();
 }

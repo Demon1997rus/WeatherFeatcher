@@ -1,6 +1,7 @@
 #include "weathercontroller.h"
 
-WeatherController::WeatherController(QObject *parent) : QObject(parent)
+WeatherController::WeatherController(const CityDirectory &cities, QObject *parent) :
+    QObject(parent), weatherWidget(cities)
 {
     connect(&httpService, &HttpService::weatherDataReceived, &converter,
             &WeatherConverter::convertToWeatherInfo);

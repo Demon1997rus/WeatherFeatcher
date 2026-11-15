@@ -1,27 +1,19 @@
 #pragma once
 
-#include <QObject>
 #include <QString>
+#include <QtGlobal>
 
-#include <string>
-#include <vector>
-
-#include "structures/citycoordinate.h"
-
+// Application-wide settings. Currently just the OpenWeatherMap API key,
+// taken from the OPENWEATHER_API_KEY environment variable at startup.
 class Config {
 public:
     static Config &instance();
-    bool loadConfig(const QString &configPath);
 
-public:
-    const std::string &apiKey() const;
-    const std::vector<CityCoordinate> &coordinatesCities() const;
+    const QString &apiKey() const;
 
 private:
-    Q_DISABLE_COPY(Config);
-    Config() = default;
+    Q_DISABLE_COPY(Config)
+    Config();
 
-private:
-    std::string api_key;
-    std::vector<CityCoordinate> coordinates_cities;
+    QString apiKey_;
 };

@@ -23,7 +23,7 @@ void HttpService::fetchWeatherData(const double latitude, const double longitude
     QUrlQuery query;
     query.addQueryItem("lat", QString::number(latitude, 'f', 6));
     query.addQueryItem("lon", QString::number(longitude, 'f', 6));
-    query.addQueryItem("appid", QString::fromStdString(Config::instance().apiKey()));
+    query.addQueryItem("appid", Config::instance().apiKey());
     query.addQueryItem("lang", "ru"); // Weather descriptions in Russian
     url.setQuery(query);
 

@@ -1,22 +1,25 @@
 #include "weatherwidget.h"
 
+#include <QCompleter>
 #include <QCoreApplication>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QImage>
+#include <QListView>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
-#include <QPointF>
+#include <QStringListModel>
 #include <QTimer>
 #include <QVBoxLayout>
 
-#include "utils/config.h"
+#include "utils/citydirectory.h"
 
 namespace {
 constexpr int refreshIntervalMs = 10 * 60 * 1000; // Refresh weather every 10 minutes
 }
 
-WeatherWidget::WeatherWidget(QWidget *parent) : QWidget(parent)
+WeatherWidget::WeatherWidget(const CityDirectory &cities, QWidget *parent) :
+    QWidget(parent), cities(cities)
 {
     setWindowTitle("Weather Fetcher");
 
@@ -25,11 +28,19 @@ WeatherWidget::WeatherWidget(QWidget *parent) : QWidget(parent)
     initConnects();
     setDefaultValues();
     applyStyles();
+
+    // Prefer Moscow as the start city; fall back to the most populated one
+    CityDirectory::Entry entry;
+    if (cities.bestMatch("Москва", entry) || cities.bestMatch("", entry)) {
+        selectCity(entry);
+    }
 }
 
 void WeatherWidget::loadCurrentCityWeather()
 {
-    onCitySelected(cbCities->currentIndex());
+    if (hasSelection) {
+        emit requestWeatherData(currentCoordinates.x(), currentCoordinates.y());
+    }
 }
 
 void WeatherWidget::displayWeatherData(const WeatherInfo &info)
@@ -37,9 +48,6 @@ void WeatherWidget::displayWeatherData(const WeatherInfo &info)
     statusLabel->clear();
     updateWeatherIcon(info.getIconCode());
 
-    if (!info.getCityName().isEmpty()) {
-        cityLabel->setText(info.getCityName());
-    }
     temperatureLabel->setText(formatTemperature(info.getTemperature()));
     feelsLikeLabel->setText(QString("Ощущается как %1").arg(formatTemperature(info.getFeelsLike())));
     descriptionLabel->setText(info.getWeatherDescription());
@@ -57,16 +65,36 @@ void WeatherWidget::displayError(const QString &errorMessage)
     statusLabel->setText(errorMessage);
 }
 
-void WeatherWidget::onCitySelected(int index)
+void WeatherWidget::onCityActivated(const QString &displayName)
 {
-    if (index < 0) {
-        // Editable combo: typed text does not match any known city
-        statusLabel->setText("Город не найден в списке. Выберите его стрелкой справа.");
+    CityDirectory::Entry entry;
+    if (cities.find(displayName, entry)) {
+        selectCity(entry);
+    }
+}
+
+void WeatherWidget::onSearchAccepted()
+{
+    const QString text = searchField->text().trimmed();
+    if (text.isEmpty()) {
         return;
     }
-    const QPointF coordinates = cbCities->itemData(index).toPointF();
-    cityLabel->setText(cbCities->itemText(index));
-    emit requestWeatherData(coordinates.x(), coordinates.y());
+
+    CityDirectory::Entry entry;
+    if (cities.find(text, entry) || cities.bestMatch(text, entry)) {
+        selectCity(entry);
+    } else {
+        statusLabel->setText(QString("Город \"%1\" не найден в базе.").arg(text));
+    }
+}
+
+void WeatherWidget::selectCity(const CityDirectory::Entry &entry)
+{
+    hasSelection = true;
+    currentCoordinates = entry.coordinates;
+    cityLabel->setText(entry.name);
+    searchField->setText(CityDirectory::displayName(entry));
+    emit requestWeatherData(entry.coordinates.x(), entry.coordinates.y());
 }
 
 QLabel *WeatherWidget::createValueLabel()
@@ -78,17 +106,18 @@ QLabel *WeatherWidget::createValueLabel()
 
 void WeatherWidget::initWidgets()
 {
-    cbCities = new QComboBox(this);
     searchField = new QLineEdit(this);
-    searchField->setPlaceholderText("Поиск города...");
-    cbCities->setEditable(true);
-    cbCities->setLineEdit(searchField);
+    searchField->setObjectName("search");
+    searchField->setPlaceholderText("Начните вводить город...");
+    searchField->setClearButtonEnabled(true);
 
-    // Cities from the config: name is displayed, coordinates travel in item data
-    for (const auto &city : Config::instance().coordinatesCities()) {
-        cbCities->addItem(QString::fromStdString(city.getCity()),
-                          QPointF(city.getLatitude(), city.getLongitude()));
-    }
+    cityModel = new QStringListModel(cities.displayNames(), this);
+    cityCompleter = new QCompleter(cityModel, this);
+    cityCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+    cityCompleter->setFilterMode(Qt::MatchContains);
+    cityCompleter->setCompletionMode(QCompleter::PopupCompletion);
+    cityCompleter->setMaxVisibleItems(10);
+    searchField->setCompleter(cityCompleter);
 
     iconLabel = new QLabel(this);
     cityLabel = new QLabel(this);
@@ -119,8 +148,8 @@ void WeatherWidget::setupLayout()
     auto *rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(48, 24, 48, 24);
 
-    cbCities->setFixedWidth(420);
-    rootLayout->addWidget(cbCities, 0, Qt::AlignHCenter);
+    searchField->setFixedWidth(420);
+    rootLayout->addWidget(searchField, 0, Qt::AlignHCenter);
     rootLayout->addStretch(1);
 
     // Central card with all weather data
@@ -173,8 +202,9 @@ void WeatherWidget::setupLayout()
 
 void WeatherWidget::initConnects()
 {
-    connect(cbCities, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-            &WeatherWidget::onCitySelected);
+    connect(cityCompleter, QOverload<const QString &>::of(&QCompleter::activated), this,
+            &WeatherWidget::onCityActivated);
+    connect(searchField, &QLineEdit::returnPressed, this, &WeatherWidget::onSearchAccepted);
 
     // Periodic refresh of the currently selected city
     connect(refreshTimer, &QTimer::timeout, this, &WeatherWidget::loadCurrentCityWeather);
@@ -223,32 +253,50 @@ void WeatherWidget::applyStyles()
         QLabel#metricTitle { color: #9fb3c8; font-size: 13px; }
         QLabel#metricValue { font-size: 15px; font-weight: bold; }
         QLabel#status { color: #ff7b72; }
-        QComboBox {
+        QLineEdit#search {
             background-color: rgba(255, 255, 255, 16);
             color: #e8eef2;
             border: 1px solid rgba(255, 255, 255, 40);
             border-radius: 8px;
-            padding: 6px 12px;
+            padding: 8px 12px;
             font-size: 14px;
         }
-        QComboBox:hover, QComboBox:focus {
+        QLineEdit#search:focus {
             border: 1px solid rgba(120, 190, 255, 140);
         }
-        QComboBox::drop-down { border: none; width: 30px; }
-        QComboBox::down-arrow {
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 6px solid #9fb3c8;
-        }
-        QComboBox QAbstractItemView {
+    )");
+
+    // Completion popup styling (it is a plain QListView owned by the completer)
+    cityCompleter->popup()->setStyleSheet(R"(
+        QListView {
             background-color: #20303c;
             color: #e8eef2;
-            selection-background-color: #2c5364;
             border: 1px solid rgba(255, 255, 255, 40);
+            border-radius: 8px;
+            padding: 4px;
+            outline: none;
+            font-size: 14px;
         }
-        QLineEdit { background: transparent; color: #e8eef2; border: none; }
+        QListView::item {
+            padding: 7px 10px;
+            border-radius: 5px;
+        }
+        QListView::item:selected {
+            background-color: #2c5364;
+        }
+        QScrollBar:vertical {
+            background: transparent;
+            width: 8px;
+            margin: 4px 2px;
+        }
+        QScrollBar::handle:vertical {
+            background: rgba(255, 255, 255, 60);
+            border-radius: 4px;
+            min-height: 24px;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0;
+        }
     )");
 }
 

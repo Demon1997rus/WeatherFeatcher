@@ -6,10 +6,12 @@
 #include "services/weatherconverter.h"
 #include "widgets/weatherwidget.h"
 
+class CityDirectory;
+
 class WeatherController : public QObject {
     Q_OBJECT
 public:
-    explicit WeatherController(QObject *parent = nullptr);
+    explicit WeatherController(const CityDirectory &cities, QObject *parent = nullptr);
 
 private:
     HttpService httpService;

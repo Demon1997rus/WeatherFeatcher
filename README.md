@@ -35,4 +35,7 @@ cmake --build --preset linux-release
    или `build/linux-release/` (Linux). Папка `data/` копируется рядом
    с бинарём автоматически при сборке.
 
-Список городов — в `data/config.json`.
+Поиск города — офлайн, по локальной базе GeoNames `data/cities.json`
+(~34 тыс. городов мира с населением >15 000, сортировка по населению).
+Обновить базу: `python tools/build_cities_json.py cities15000.txt data/cities.json alternateNamesV2.txt`
+(исходники дампов — https://download.geonames.org/export/dump/).
