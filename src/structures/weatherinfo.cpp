@@ -50,6 +50,11 @@ void WeatherInfo::setIconCode(const QString &iconCode)
     this->iconCode = iconCode;
 }
 
+void WeatherInfo::setCityName(const QString &cityName)
+{
+    this->cityName = cityName;
+}
+
 double WeatherInfo::getTemperature() const
 {
     return this->temperature;
@@ -93,4 +98,9 @@ int WeatherInfo::getCloudiness() const
 const QString &WeatherInfo::getIconCode() const
 {
     return this->iconCode;
+}
+
+const QString &WeatherInfo::getCityName() const
+{
+    return this->cityName;
 }

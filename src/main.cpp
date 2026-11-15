@@ -24,6 +24,7 @@ int runScreenshotMode(QApplication &app, const QString &outputPath)
     sample.setWindDirection(231);
     sample.setCloudiness(96);
     sample.setIconCode("04d");
+    sample.setCityName("Москва");
 
     widget.resize(1280, 800);
     widget.show();

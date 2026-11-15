@@ -14,6 +14,7 @@ public:
     void setWindDirection(int direction);
     void setCloudiness(int cloudiness);
     void setIconCode(const QString &iconCode);
+    void setCityName(const QString &cityName);
 
     double getTemperature() const;
     double getFeelsLike() const;
@@ -24,6 +25,7 @@ public:
     int getWindDirection() const;
     int getCloudiness() const;
     const QString &getIconCode() const;
+    const QString &getCityName() const;
 
 private:
     double temperature = 0.0;     // Current air temperature in Celsius
@@ -35,4 +37,5 @@ private:
     int windDirection = 0;        // Wind direction in degrees (0 - north, 90 - east, etc.)
     int cloudiness = 0;           // Cloudiness in percent (sky coverage)
     QString iconCode;             // OpenWeatherMap icon code (e.g. "10d")
+    QString cityName;             // City name reported by the API
 };

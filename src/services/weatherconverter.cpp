@@ -19,6 +19,7 @@ void WeatherConverter::convertToWeatherInfo(const QByteArray &data) const
     const QJsonObject weatherObject = weatherDoc.object();
 
     WeatherInfo weatherInfo;
+    weatherInfo.setCityName(weatherObject["name"].toString());
 
     // Извлечение данных из ключа "main"
     if (weatherObject.contains("main") && weatherObject["main"].isObject()) {

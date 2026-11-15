@@ -18,6 +18,8 @@ constexpr int refreshIntervalMs = 10 * 60 * 1000; // Refresh weather every 10 mi
 
 WeatherWidget::WeatherWidget(QWidget *parent) : QWidget(parent)
 {
+    setWindowTitle("Weather Fetcher");
+
     initWidgets();
     setupLayout();
     initConnects();
@@ -35,6 +37,9 @@ void WeatherWidget::displayWeatherData(const WeatherInfo &info)
     statusLabel->clear();
     updateWeatherIcon(info.getIconCode());
 
+    if (!info.getCityName().isEmpty()) {
+        cityLabel->setText(info.getCityName());
+    }
     temperatureLabel->setText(formatTemperature(info.getTemperature()));
     feelsLikeLabel->setText(QString("Ощущается как %1").arg(formatTemperature(info.getFeelsLike())));
     descriptionLabel->setText(info.getWeatherDescription());
@@ -54,7 +59,13 @@ void WeatherWidget::displayError(const QString &errorMessage)
 
 void WeatherWidget::onCitySelected(int index)
 {
+    if (index < 0) {
+        // Editable combo: typed text does not match any known city
+        statusLabel->setText("Город не найден в списке. Выберите его стрелкой справа.");
+        return;
+    }
     const QPointF coordinates = cbCities->itemData(index).toPointF();
+    cityLabel->setText(cbCities->itemText(index));
     emit requestWeatherData(coordinates.x(), coordinates.y());
 }
 
@@ -80,6 +91,9 @@ void WeatherWidget::initWidgets()
     }
 
     iconLabel = new QLabel(this);
+    cityLabel = new QLabel(this);
+    cityLabel->setObjectName("city");
+    cityLabel->setAlignment(Qt::AlignCenter);
     temperatureLabel = new QLabel(this);
     temperatureLabel->setObjectName("temperature");
     feelsLikeLabel = new QLabel(this);
@@ -117,12 +131,17 @@ void WeatherWidget::setupLayout()
     cardLayout->setContentsMargins(32, 28, 32, 28);
     cardLayout->setSpacing(10);
 
+    cardLayout->addWidget(cityLabel);
+
     auto *headerLayout = new QHBoxLayout;
+    headerLayout->addStretch(1);
     headerLayout->addWidget(iconLabel);
     headerLayout->addWidget(temperatureLabel);
     headerLayout->addStretch(1);
     cardLayout->addLayout(headerLayout);
 
+    descriptionLabel->setAlignment(Qt::AlignCenter);
+    feelsLikeLabel->setAlignment(Qt::AlignCenter);
     cardLayout->addWidget(descriptionLabel);
     cardLayout->addWidget(feelsLikeLabel);
     cardLayout->addSpacing(8);
@@ -191,12 +210,14 @@ void WeatherWidget::applyStyles()
     setStyleSheet(R"(
         QWidget#card {
             background-color: rgba(255, 255, 255, 16);
+            border: 1px solid rgba(255, 255, 255, 24);
             border-radius: 18px;
         }
         QLabel {
             color: #e8eef2;
             background: transparent;
         }
+        QLabel#city { font-size: 24px; font-weight: bold; }
         QLabel#temperature { font-size: 52px; font-weight: bold; }
         QLabel#secondary { color: #9fb3c8; font-size: 15px; }
         QLabel#metricTitle { color: #9fb3c8; font-size: 13px; }
@@ -210,7 +231,17 @@ void WeatherWidget::applyStyles()
             padding: 6px 12px;
             font-size: 14px;
         }
-        QComboBox::drop-down { border: none; width: 28px; }
+        QComboBox:hover, QComboBox:focus {
+            border: 1px solid rgba(120, 190, 255, 140);
+        }
+        QComboBox::drop-down { border: none; width: 30px; }
+        QComboBox::down-arrow {
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid #9fb3c8;
+        }
         QComboBox QAbstractItemView {
             background-color: #20303c;
             color: #e8eef2;

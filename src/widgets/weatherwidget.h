@@ -45,6 +45,7 @@ private:
     QComboBox *cbCities = nullptr;
     QLineEdit *searchField = nullptr;
     QLabel *iconLabel = nullptr;
+    QLabel *cityLabel = nullptr;
     QLabel *temperatureLabel = nullptr;
     QLabel *feelsLikeLabel = nullptr;
     QLabel *descriptionLabel = nullptr;
