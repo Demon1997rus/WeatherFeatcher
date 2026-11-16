@@ -6,6 +6,7 @@
 #include "utils/citydirectory.h"
 
 class QListWidget;
+class QListWidgetItem;
 class QTimer;
 
 // Search line edit with a debounced live popup over the offline city database.
@@ -30,6 +31,7 @@ protected:
 
 private slots:
     void performSearch();
+    void acceptItem(QListWidgetItem *item);
 
 private:
     void showBrowseList();

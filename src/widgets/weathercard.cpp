@@ -10,6 +10,9 @@
 WeatherCard::WeatherCard(QWidget *parent) : QWidget(parent)
 {
     setObjectName("card");
+    // A QWidget subclass ignores QSS background/border unless asked to paint
+    // them (a plain QWidget does this implicitly)
+    setAttribute(Qt::WA_StyledBackground, true);
     setFixedWidth(520);
 
     iconLabel = new QLabel(this);

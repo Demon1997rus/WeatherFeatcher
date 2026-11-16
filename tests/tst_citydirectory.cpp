@@ -13,6 +13,9 @@ private slots:
     void bestMatchSearchesAliases();
     void searchRanksPrefixOverSubstring();
     void returnsFalseOnUnknown();
+    void findPrefersMostPopulatedOnDuplicateName();
+    void searchTreatsYoAsYe();
+    void entryAtResolvesDuplicateNamesExactly();
 
 private:
     QString fixturePath;
@@ -27,7 +30,10 @@ void TestCityDirectory::initTestCase()
         {"n":"Москва","a":"Moscow","c":"RU","la":55.75,"lo":37.62,"p":12500000},
         {"n":"Самара","a":"Samara","c":"RU","la":53.2,"lo":50.15,"p":1100000},
         {"n":"Самара","a":"Samara","c":"US","la":40.0,"lo":-100.0,"p":20000},
-        {"n":"Пекин","a":"Beijing","c":"CN","la":39.9,"lo":116.4,"p":18900000}
+        {"n":"Пекин","a":"Beijing","c":"CN","la":39.9,"lo":116.4,"p":18900000},
+        {"n":"Хэфэй","a":"Hefei","c":"CN","la":31.86,"lo":117.28,"p":9400000},
+        {"n":"Хэфэй","a":"Luzhou","c":"CN","la":28.89,"lo":105.43,"p":990000},
+        {"n":"Кёльн","a":"Cologne","c":"DE","la":50.93,"lo":6.95,"p":1000000}
     ])");
     fixture.close();
 }
@@ -93,6 +99,55 @@ void TestCityDirectory::searchRanksPrefixOverSubstring()
     const auto results = directory.search("сам", 10);
     QCOMPARE(results.size(), size_t(2));
     QCOMPARE(results.front().country, QString("RU"));
+}
+
+void TestCityDirectory::findPrefersMostPopulatedOnDuplicateName()
+{
+    CityDirectory directory;
+    QVERIFY(directory.load(fixturePath));
+
+    // Two entries share "Хэфэй, CN": the most populated one must win
+    CityDirectory::Entry entry;
+    QVERIFY(directory.find("Хэфэй, CN", entry));
+    QCOMPARE(entry.coordinates, QPointF(31.86, 117.28));
+}
+
+void TestCityDirectory::searchTreatsYoAsYe()
+{
+    CityDirectory directory;
+    QVERIFY(directory.load(fixturePath));
+
+    // Users often type "е" instead of "ё" (and vice versa)
+    const auto results = directory.search("кельн", 10);
+    QCOMPARE(results.size(), size_t(1));
+    QCOMPARE(results.front().country, QString("DE"));
+    QCOMPARE(directory.search("Кёльн", 10).size(), size_t(1));
+
+    CityDirectory::Entry entry;
+    QVERIFY(directory.bestMatch("Кельн", entry));
+    QCOMPARE(entry.country, QString("DE"));
+    QVERIFY(directory.find("Кельн, DE", entry));
+    QCOMPARE(entry.country, QString("DE"));
+}
+
+void TestCityDirectory::entryAtResolvesDuplicateNamesExactly()
+{
+    CityDirectory directory;
+    QVERIFY(directory.load(fixturePath));
+
+    // Both "Хэфэй, CN" rows of the popup must lead to their own coordinates
+    const auto results = directory.search("хэф", 10);
+    QCOMPARE(results.size(), size_t(2));
+    QVERIFY(results[0].id != results[1].id);
+
+    CityDirectory::Entry entry;
+    QVERIFY(directory.entryAt(results[1].id, entry));
+    QCOMPARE(entry.coordinates, QPointF(28.89, 105.43));
+    QVERIFY(directory.entryAt(results[0].id, entry));
+    QCOMPARE(entry.coordinates, QPointF(31.86, 117.28));
+
+    QVERIFY(!directory.entryAt(-1, entry));
+    QVERIFY(!directory.entryAt(1000, entry));
 }
 
 QTEST_GUILESS_MAIN(TestCityDirectory)

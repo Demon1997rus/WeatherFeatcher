@@ -68,17 +68,26 @@ void CitySearchBox::keyPressEvent(QKeyEvent *event)
     }
 
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+        const QString text = this->text().trimmed();
+
+        // Enter before the debounced search ran: the popup still shows rows
+        // for the previous text, so refresh it for the current text first
+        if (debounce->isActive()) {
+            debounce->stop();
+            if (!text.isEmpty()) {
+                performSearch();
+                if (!popup || !popup->isVisible()) {
+                    return; // Nothing matched; performSearch reported it
+                }
+            }
+        }
+
         // Enter with an open popup activates the highlighted row
         if (popup && popup->isVisible() && popup->currentRow() >= 0) {
-            const QString displayName = popup->currentItem()->text();
-            CityDirectory::Entry entry;
-            if (cities.find(displayName, entry)) {
-                acceptEntry(entry);
-            }
+            acceptItem(popup->currentItem());
             return;
         }
 
-        const QString text = this->text().trimmed();
         if (text.isEmpty()) {
             return;
         }
@@ -162,17 +171,14 @@ void CitySearchBox::showResults(const std::vector<CityDirectory::Entry> &results
                 background-color: rgba(44, 83, 100, 120);
             }
         )");
-        connect(popup, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
-            CityDirectory::Entry entry;
-            if (cities.find(item->text(), entry)) {
-                acceptEntry(entry);
-            }
-        });
+        connect(popup, &QListWidget::itemClicked, this, &CitySearchBox::acceptItem);
     }
 
     popup->clear();
     for (const auto &entry : results) {
-        popup->addItem(CityDirectory::displayName(entry));
+        // The row keeps the entry id: display strings are not unique
+        auto *item = new QListWidgetItem(CityDirectory::displayName(entry), popup);
+        item->setData(Qt::UserRole, entry.id);
     }
 
     // Popup right under the search field, same width
@@ -192,8 +198,19 @@ void CitySearchBox::hidePopup()
     }
 }
 
+void CitySearchBox::acceptItem(QListWidgetItem *item)
+{
+    CityDirectory::Entry entry;
+    if (item && cities.entryAt(item->data(Qt::UserRole).toInt(), entry)) {
+        acceptEntry(entry);
+    }
+}
+
 void CitySearchBox::acceptEntry(const CityDirectory::Entry &entry)
 {
+    // A search still pending for the typed text would report the accepted
+    // "Name, CC" display string as not found
+    debounce->stop();
     setCityDisplay(entry);
     hidePopup();
     emit citySelected(entry);
